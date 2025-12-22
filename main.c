@@ -13,6 +13,10 @@ typedef struct {
 #define GAME_OVER 1 
 #define MAIN_MENU 2 
 int chosenDifficulty = 0;
+int min_diff = 0, max_diff = 3;
+char difficultyLabels[][24] = {
+    "Easy", "Normal", "Hard", "???"
+};
 
 //Pages
 int PageSelector = 2;
@@ -26,8 +30,8 @@ void startGame(int *game_score, int *game_lives, bool *right_flow, int *game_arr
 int main ()
 {
     const int Scrwidth = 1280, Scrheight = 720;
-    SetConfigFlags(FLAG_FULLSCREEN_MODE);
-    //SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    //SetConfigFlags(FLAG_FULLSCREEN_MODE);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(Scrwidth, Scrheight, "One Second Arrow");
     InitAudioDevice();
 
@@ -70,11 +74,13 @@ int main ()
 
     //Buttons Rects
     Rectangle playBtnRect = {0, 0, 0, 0};
+    Rectangle diffBtnRect = {0, 0, 0, 0};
 
     while (!WindowShouldClose())
     {
         //Global loop variables
         Color playBtnColor = DARKGREEN;
+        Color diffBtnColor = DARKGREEN;
         //Page logics
 
         switch(PageSelector)
@@ -168,6 +174,10 @@ int main ()
                 if(CheckCollisionPointRec(GetMousePosition(), playBtnRect)){
                     playBtnColor = RED;
                 }
+                //Difficulty button
+                if(CheckCollisionPointRec(GetMousePosition(), diffBtnRect)){
+                    diffBtnColor = RED;
+                }
                 //Clicking stuff for buttons
                 bool playBtnCond = (
                     CheckCollisionPointRec(GetMousePosition(), playBtnRect) && 
@@ -176,7 +186,16 @@ int main ()
                 if(playBtnCond){
                     startGame(&total_score, &lives, 
                               &rightFlow, &arrowCount, 
-                              &hitDelay, &resetHitDelay, 0);
+                              &hitDelay, &resetHitDelay, chosenDifficulty);
+                }
+
+                bool diffBtnCond = (
+                    CheckCollisionPointRec(GetMousePosition(), diffBtnRect) && 
+                    IsMouseButtonPressed(MOUSE_LEFT_BUTTON)
+                );
+                if(diffBtnCond){
+                    if(chosenDifficulty >= max_diff) chosenDifficulty = min_diff;
+                    else chosenDifficulty++;
                 }
             break;
 
@@ -216,8 +235,7 @@ int main ()
                 Vector2 textSize = MeasureTextEx(mainFont, "Game Over!", fontSize, 0);
 
                 DrawTextEx(mainFont, "Game Over!", 
-                        (Vector2){(GetScreenWidth()-textSize.x)/2, ((GetScreenHeight()-textSize.y)/2)-100},
-                        fontSize, 0, BLACK);
+                        (Vector2){(GetScreenWidth()-textSize.x)/2, ((GetScreenHeight()-textSize.y)/2)-100}, fontSize, 0, BLACK);
 
                 fontSize = GetScreenWidth()*0.02;
                 textSize = MeasureTextEx(mainFont, "Your score is %d.", fontSize, 0);
@@ -243,11 +261,24 @@ int main ()
                 DrawTexturePro(logo_menu, srcSizeLogoMenu, rectLogoMenu, (Vector2){0, 0}, 0, WHITE);
                 //Play Button
                 Vector2 playBtnSize = MeasureTextEx(mainFont, "Play", 50, 0.4);
-                DrawTextEx(mainFont, "Play", (Vector2){rectLogoMenu.x-50, rectLogoMenu.y+300}, 50, 0.4, playBtnColor);
-
+                DrawTextEx(mainFont, "Play", (Vector2){playBtnRect.x, playBtnRect.y}, 50, 0.4, playBtnColor);
                 //Play Button - variables
-                playBtnRect.x = rectLogoMenu.x-50; playBtnRect.y = rectLogoMenu.y+300;
+                playBtnRect.x = (GetScreenWidth()-playBtnSize.x)/2; playBtnRect.y = rectLogoMenu.y+rectLogoMenu.height+80;
                 playBtnRect.width = playBtnSize.x; playBtnRect.height = playBtnSize.y;
+
+                //Difficulty Button
+                char diffBuff[64];
+                snprintf(diffBuff, sizeof(diffBuff), "Difficulty: %s.", difficultyLabels[chosenDifficulty]);
+                Vector2 diffBtnSize = MeasureTextEx(mainFont, diffBuff, 25, 0.4);
+                DrawTextEx(mainFont, diffBuff, (Vector2){diffBtnRect.x, diffBtnRect.y}, 25, 0.4, diffBtnColor);
+                //Difficulty Button - variables
+                diffBtnRect.x = (GetScreenWidth()-diffBtnSize.x)/2; diffBtnRect.y = rectLogoMenu.y+rectLogoMenu.height+150;
+                diffBtnRect.width = diffBtnSize.x; diffBtnRect.height = diffBtnSize.y;
+
+                //Intructions lol
+                DrawTextEx(mainFont, TextFormat("[Esc to exit]"), 
+                (Vector2){10, 10},
+                20, 0, BLACK);
             break;
 
             default: break;
@@ -332,7 +363,34 @@ void startGame (int *game_score, int *game_lives, bool *right_flow, int *game_ar
             *game_score = 0;  *right_flow = true; *game_arrow_count = 0;
             *game_reset_hit_timer = true;
             //Things to make the lives of players harder hehehe
-            *game_lives = 5; *game_hit_limit = 3.5;
+            *game_lives = 8; *game_hit_limit = 5;
+            chosenDifficulty = difficulty;
+        break;
+
+        case 1:
+            //Reset game setting
+            *game_score = 0;  *right_flow = true; *game_arrow_count = 0;
+            *game_reset_hit_timer = true;
+            //Things to make the lives of players harder hehehe
+            *game_lives = 5; *game_hit_limit = 3.6;
+            chosenDifficulty = difficulty;
+        break;
+
+        case 2:
+            //Reset game setting
+            *game_score = 0;  *right_flow = true; *game_arrow_count = 0;
+            *game_reset_hit_timer = true;
+            //Things to make the lives of players harder hehehe
+            *game_lives = 3; *game_hit_limit = 2;
+            chosenDifficulty = difficulty;
+        break;
+
+        case 3:
+            //Reset game setting
+            *game_score = 0;  *right_flow = true; *game_arrow_count = 0;
+            *game_reset_hit_timer = true;
+            //Things to make the lives of players harder hehehe
+            *game_lives = 1; *game_hit_limit = 0.5;
             chosenDifficulty = difficulty;
         break;
     }
