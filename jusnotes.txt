@@ -1,0 +1,5 @@
+
+Function for difficulty hehe:
+    Parameters:
+       (int)game_score, (int)game_lives, (bool)right_flow,
+       (int)game_arrow_count, (float)game_hit_limit, (bool)game_reset_hit_timer,
