@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 typedef struct { 
     bool isExist;
@@ -9,6 +10,7 @@ typedef struct {
 } Arrow;
 
 //Global variables
+#define SAVE_FILE "scores.one"
 #define MAIN_GAME 0 
 #define GAME_OVER 1 
 #define MAIN_MENU 2 
@@ -17,6 +19,7 @@ int min_diff = 0, max_diff = 3;
 char difficultyLabels[][24] = {
     "Easy", "Normal", "Hard", "???"
 };
+bool isNewBest = false;
 
 //Pages
 int PageSelector = 2;
@@ -26,9 +29,15 @@ Texture2D getTextureFrImg(char *file_path);
 void displayArrows(Arrow *arrow_list, int arrow_count, Texture2D * texture, Rectangle arrow_source, float spacing, bool *right_flow);
 void displayLives(int *lives, float spacing);
 void startGame(int *game_score, int *game_lives, bool *right_flow, int *game_arrow_count, float *game_hit_limit, bool *game_reset_hit_timer, int difficulty);
+void saveScore(int current_score);
+void checkSaveFile();
+int getSavedScore();
+void printSavedScore();
 
 int main ()
 {
+    checkSaveFile();
+    printSavedScore();
     const int Scrwidth = 1280, Scrheight = 720;
     //SetConfigFlags(FLAG_FULLSCREEN_MODE);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -65,6 +74,7 @@ int main ()
     int arrow_hit = -1, lives = 5;
     bool rightFlow = true; int flowNum = 0;
     Arrow arrows[11]; int arrowCount = 0;
+    int bestScoreBuff = -1;
     //Rotation animation variables for flow-arrow
     float flowArrowRotation = 0.00; float rotateSpeed = 4.00;
     //Hit delay mechanic variables
@@ -153,6 +163,9 @@ int main ()
                 if(GetTime()-captHitDelay >= hitDelay || lives <= 0){
                     PageSelector = GAME_OVER;
                 }
+                //Reset best score lolz
+                bestScoreBuff = -1;
+                isNewBest = false;
             break;
 
             case GAME_OVER:
@@ -166,6 +179,11 @@ int main ()
                 //Go to menu
                 else if(IsKeyPressed(KEY_SPACE)){
                     PageSelector = 2;
+                }
+                //Show best score
+                if(bestScoreBuff == -1){
+                    saveScore(total_score);
+                    bestScoreBuff = getSavedScore();
                 }
             break;
 
@@ -237,9 +255,14 @@ int main ()
                 DrawTextEx(mainFont, "Game Over!", 
                         (Vector2){(GetScreenWidth()-textSize.x)/2, ((GetScreenHeight()-textSize.y)/2)-100}, fontSize, 0, BLACK);
 
+                char scoreDisplayBuff[64];
+                strcpy(scoreDisplayBuff, TextFormat("Score: %d      Best score: %d", total_score, bestScoreBuff));
+                if(isNewBest)
+                    strcpy(scoreDisplayBuff, 
+                      TextFormat("Score: %d      Best score: %d(new)", total_score, bestScoreBuff));
                 fontSize = GetScreenWidth()*0.02;
-                textSize = MeasureTextEx(mainFont, "Your score is %d.", fontSize, 0);
-                DrawTextEx(mainFont, TextFormat("Your score is %d.", total_score), 
+                textSize = MeasureTextEx(mainFont, scoreDisplayBuff, fontSize, 0);
+                DrawTextEx(mainFont, scoreDisplayBuff, 
                         (Vector2){(GetScreenWidth()-textSize.x)/2, ((GetScreenHeight()*0.6))},
                         fontSize, 0, BLACK);
 
@@ -248,6 +271,7 @@ int main ()
                 DrawTextEx(mainFont, TextFormat("[Enter to restart]   [Esc to exit]   [Space to main menu]", total_score), 
                         (Vector2){(GetScreenWidth()-textSize.x)/2, ((GetScreenHeight()*0.7))},
                         fontSize, 0, BLACK);
+
             break;
 
             //MAIN_MENU
@@ -397,3 +421,79 @@ void startGame (int *game_score, int *game_lives, bool *right_flow, int *game_ar
     //Redirect to main game page
     PageSelector = 0;
 }
+
+void checkSaveFile ()
+{
+    FILE *file = fopen(SAVE_FILE, "rb");
+    if(file == NULL){
+        printf("File error. Writing new file\n");
+        file = fopen(SAVE_FILE, "wb");
+        int defaultScore = 0;
+        for(int i = 0; i < max_diff+1; i++) fwrite(&defaultScore, sizeof(defaultScore), 1, file);
+        fclose(file);
+    } else {
+        printf("File exists.\n");
+        fclose(file);
+    }
+}
+
+void saveScore (int current_score)
+{
+    checkSaveFile();
+    FILE *file = fopen(SAVE_FILE, "rb+");
+
+    if(file == NULL){
+        printf("File error in saveScore().\n");
+        return;
+    }
+
+    int scoreBuff;
+    for(int i = 0; i < chosenDifficulty; i++){
+        fseek(file, sizeof(scoreBuff), SEEK_CUR);
+    }
+    fread(&scoreBuff, sizeof(scoreBuff), 1, file);
+    fseek(file, -(long)sizeof(scoreBuff), SEEK_CUR);
+
+    if(current_score > scoreBuff){
+        fwrite(&current_score, sizeof(current_score), 1, file);
+        isNewBest = true;
+    }
+
+    fclose(file);
+}
+
+int getSavedScore ()
+{
+    FILE *file = fopen(SAVE_FILE, "rb");
+    if(file == NULL){
+        printf("File error in getSavedScore().\n");
+        return -2;
+    }
+
+    int scoreBuff;
+    for(int i = 0; i < chosenDifficulty; i++){
+        fread(&scoreBuff, sizeof(scoreBuff), 1, file);
+    }
+    fread(&scoreBuff, sizeof(scoreBuff), 1, file);
+    fclose(file);
+    return scoreBuff;
+}
+
+void printSavedScore ()
+{
+    FILE *file = fopen(SAVE_FILE, "rb");
+    if(file == NULL){
+        printf("File error in printSavedScore().\n");
+        return;
+    }
+
+    int scoreBuff;
+    int loop = 0;
+    while(fread(&scoreBuff, sizeof(scoreBuff), 1, file)){
+        printf("Difficulty %s score: %d.\n", difficultyLabels[loop], scoreBuff);
+        loop++;
+    }
+
+    fclose(file);
+}
+
